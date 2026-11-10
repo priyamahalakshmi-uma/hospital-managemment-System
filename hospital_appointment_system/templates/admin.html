@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin & Receptionist Dashboard - City Care Hospital</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">🏥 City Care Hospital - Staff Portal</a>
+            <ul class="nav-links">
+                <li><a href="/">Patient Portal</a></li>
+                <li><a href="/lookup">Check Booking Status</a></li>
+                <li><a href="/admin" class="active">Admin Dashboard</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="hero-header">
+        <h1>🛠️ Hospital Administration Portal</h1>
+        <p>Outpatient Queue Management, Real-Time Consultation Roster & Staff Controls</p>
+        <div class="hero-highlights">
+            <span class="highlight-pill">📊 Live Patient KPIs</span>
+            <span class="highlight-pill">👨‍⚕️ 8 Department Rosters</span>
+            <span class="highlight-pill">🖨️ Daily Clinic Sheet Export</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Admin Login Section (Shown if logged out) -->
+        <div id="loginSection" class="card-section" style="max-width: 480px; margin: 30px auto; display: none;">
+            <h2>🔐 Staff / Admin Login</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+                Enter administrative credentials to manage appointments and schedules.<br>
+                <small style="color: #087f8c;">Default Demo: <strong>admin</strong> / <strong>admin123</strong></small>
+            </p>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="adminUsername">Username</label>
+                    <input type="text" id="adminUsername" value="admin" required>
+                </div>
+                <div class="form-group">
+                    <label for="adminPassword">Password</label>
+                    <input type="password" id="adminPassword" value="admin123" required>
+                </div>
+                <div id="loginError" class="error-text"></div>
+                <button type="submit" id="loginBtn" class="btn btn-block" style="margin-top: 10px;">
+                    🔓 Sign In to Dashboard
+                </button>
+            </form>
+        </div>
+
+        <!-- Dashboard Section (Shown if logged in) -->
+        <div id="dashboardSection" style="display: none;">
+
+            <!-- User Welcome Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h2 style="color: #087f8c; margin-bottom: 4px;">Welcome back, Administrator 👋</h2>
+                    <p style="color: #666; font-size: 14px;">Daily overview of patient appointments &bull; Database: <span class="badge" style="background:#eef6f8; color:#087f8c; border:1px solid #d1e2e6;">{{ db_mode }}</span></p>
+                </div>
+                <div>
+                    <button type="button" id="refreshBtn" class="btn btn-sm btn-secondary">🔄 Refresh Data</button>
+                    <button type="button" id="logoutBtn" class="btn btn-sm btn-danger">🚪 Logout</button>
+                </div>
+            </div>
+
+            <!-- KPI Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-info">
+                        <h4>Total Bookings</h4>
+                        <div id="statTotal" class="stat-number">0</div>
+                    </div>
+                    <div class="stat-icon">📊</div>
+                </div>
+
+                <div class="stat-card stat-today">
+                    <div class="stat-info">
+                        <h4>Today's Appointments</h4>
+                        <div id="statToday" class="stat-number">0</div>
+                    </div>
+                    <div class="stat-icon">📅</div>
+                </div>
+
+                <div class="stat-card stat-confirmed">
+                    <div class="stat-info">
+                        <h4>Confirmed (Pending)</h4>
+                        <div id="statConfirmed" class="stat-number">0</div>
+                    </div>
+                    <div class="stat-icon">⏳</div>
+                </div>
+
+                <div class="stat-card stat-completed">
+                    <div class="stat-info">
+                        <h4>Completed</h4>
+                        <div id="statCompleted" class="stat-number">0</div>
+                    </div>
+                    <div class="stat-icon">✅</div>
+                </div>
+
+                <div class="stat-card stat-cancelled">
+                    <div class="stat-info">
+                        <h4>Cancelled</h4>
+                        <div id="statCancelled" class="stat-number">0</div>
+                    </div>
+                    <div class="stat-icon">❌</div>
+                </div>
+            </div>
+
+            <!-- Filter & Search Bar -->
+            <div class="filter-bar">
+                <div class="form-group" style="flex: 2;">
+                    <label for="filterSearch">Search Patient / Phone / Ref ID</label>
+                    <input type="text" id="filterSearch" placeholder="Type name, phone or CCH-...">
+                </div>
+
+                <div class="form-group">
+                    <label for="filterDoctor">Filter by Doctor</label>
+                    <select id="filterDoctor">
+                        <option value="All">All Doctors</option>
+                        {% for doc in doctors %}
+                        <option value="{{ doc.name }}">{{ doc.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filterStatus">Status</label>
+                    <select id="filterStatus">
+                        <option value="All">All Statuses</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="filterDate">Date</label>
+                    <input type="date" id="filterDate">
+                </div>
+
+                <div>
+                    <button type="button" id="clearFiltersBtn" class="btn btn-secondary btn-sm" style="height: 44px;">
+                        Reset Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Appointments Table Card -->
+            <div class="card-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>📋 Appointment Roster (<span id="tableCount">0</span> records)</h2>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()">🖨️ Print Roster</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Ref ID</th>
+                                <th>Patient Name</th>
+                                <th>Phone</th>
+                                <th>Doctor</th>
+                                <th>Date & Time</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appointmentsTableBody">
+                            <tr><td colspan="8" style="text-align: center; padding: 25px;">Loading appointment records...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Appointment Slip Modal (Print-Ready) -->
+    <div id="slipModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📄 Patient Appointment Slip</h3>
+                <button type="button" id="modalCloseBtn" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="appointment-slip">
+                    <div class="slip-header">
+                        <h2>🏥 City Care Hospital</h2>
+                        <p>25, Main Road, Tiruppur, Tamil Nadu | Ph: 9876543210</p>
+                        <p><strong>Official Outpatient Appointment Slip</strong></p>
+                    </div>
+
+                    <div class="slip-ref-box">
+                        <span>Booking Reference Number</span>
+                        <strong id="slipRefId">CCH-XXXXXXXX-XXXX</strong>
+                    </div>
+
+                    <table class="slip-table">
+                        <tr><td class="label">Patient Name:</td><td id="slipPatientName">-</td></tr>
+                        <tr><td class="label">Contact Phone:</td><td id="slipPhone">-</td></tr>
+                        <tr><td class="label">Email:</td><td id="slipEmail">-</td></tr>
+                        <tr><td class="label">Consulting Doctor:</td><td id="slipDoctor">-</td></tr>
+                        <tr><td class="label">Appointment Date:</td><td id="slipDate">-</td></tr>
+                        <tr><td class="label">Scheduled Time:</td><td id="slipTime">-</td></tr>
+                        <tr><td class="label">Purpose / Symptoms:</td><td id="slipReason">-</td></tr>
+                        <tr><td class="label">Current Status:</td><td><span id="slipStatus" class="badge badge-confirmed">Confirmed</span></td></tr>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="modalPrintBtn" class="btn btn-secondary">🖨️ Print Slip</button>
+                <button type="button" id="modalDoneBtn" class="btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2026 City Care Hospital | Web Technologies Project | Tiruppur, Tamil Nadu</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            checkSession();
+            initAdminControls();
+        });
+
+        function checkSession() {
+            fetch("/api/admin/session")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.logged_in) {
+                        showDashboard();
+                    } else {
+                        showLogin();
+                    }
+                })
+                .catch(() => showLogin());
+        }
+
+        function showLogin() {
+            document.getElementById("loginSection").style.display = "block";
+            document.getElementById("dashboardSection").style.display = "none";
+        }
+
+        function showDashboard() {
+            document.getElementById("loginSection").style.display = "none";
+            document.getElementById("dashboardSection").style.display = "block";
+            loadStats();
+            loadAppointments();
+        }
+
+        function initAdminControls() {
+            // Login Form
+            document.getElementById("loginForm").addEventListener("submit", function (e) {
+                e.preventDefault();
+                const username = document.getElementById("adminUsername").value.trim();
+                const password = document.getElementById("adminPassword").value.trim();
+                const errEl = document.getElementById("loginError");
+                errEl.textContent = "";
+
+                fetch("/api/admin/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showDashboard();
+                    } else {
+                        errEl.textContent = data.message || "Invalid credentials";
+                    }
+                })
+                .catch(() => {
+                    errEl.textContent = "Error connecting to server.";
+                });
+            });
+
+            // Logout
+            document.getElementById("logoutBtn").addEventListener("click", function () {
+                fetch("/api/admin/logout", { method: "POST" })
+                    .then(() => showLogin());
+            });
+
+            // Refresh button
+            document.getElementById("refreshBtn").addEventListener("click", function () {
+                loadStats();
+                loadAppointments();
+            });
+
+            // Filters
+            const filterSearch = document.getElementById("filterSearch");
+            const filterDoctor = document.getElementById("filterDoctor");
+            const filterStatus = document.getElementById("filterStatus");
+            const filterDate = document.getElementById("filterDate");
+
+            let debounceTimer;
+            filterSearch.addEventListener("input", function () {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(loadAppointments, 300);
+            });
+
+            filterDoctor.addEventListener("change", loadAppointments);
+            filterStatus.addEventListener("change", loadAppointments);
+            filterDate.addEventListener("change", loadAppointments);
+
+            document.getElementById("clearFiltersBtn").addEventListener("click", function () {
+                filterSearch.value = "";
+                filterDoctor.value = "All";
+                filterStatus.value = "All";
+                filterDate.value = "";
+                loadAppointments();
+            });
+        }
+
+        function loadStats() {
+            fetch("/api/admin/stats")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById("statTotal").textContent = data.stats.total;
+                        document.getElementById("statToday").textContent = data.stats.today;
+                        document.getElementById("statConfirmed").textContent = data.stats.confirmed;
+                        document.getElementById("statCompleted").textContent = data.stats.completed;
+                        document.getElementById("statCancelled").textContent = data.stats.cancelled;
+                    }
+                })
+                .catch(err => console.error("Stats load error:", err));
+        }
+
+        function loadAppointments() {
+            const search = document.getElementById("filterSearch").value.trim();
+            const doctor = document.getElementById("filterDoctor").value;
+            const status = document.getElementById("filterStatus").value;
+            const date = document.getElementById("filterDate").value;
+
+            const tbody = document.getElementById("appointmentsTableBody");
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 25px;">Loading appointments...</td></tr>`;
+
+            const params = new URLSearchParams({ search, doctor, status, date });
+
+            fetch(`/api/admin/appointments?${params.toString()}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        tbody.innerHTML = `<tr><td colspan="8" style="color:red; text-align:center;">Failed to load records</td></tr>`;
+                        return;
+                    }
+
+                    document.getElementById("tableCount").textContent = data.appointments.length;
+
+                    if (data.appointments.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 25px; color: #777;">No matching appointments found.</td></tr>`;
+                        return;
+                    }
+
+                    let rows = "";
+                    data.appointments.forEach(app => {
+                        let badgeClass = "badge-confirmed";
+                        if (app.status === "Completed") badgeClass = "badge-completed";
+                        if (app.status === "Cancelled") badgeClass = "badge-cancelled";
+
+                        rows += `
+                            <tr>
+                                <td><strong style="color: #087f8c;">${app.reference_id}</strong></td>
+                                <td>${app.patient_name}</td>
+                                <td>${app.phone}</td>
+                                <td>${app.doctor_name}</td>
+                                <td>${app.appointment_date}<br><small style="color:#666;">${app.appointment_time}</small></td>
+                                <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${app.reason}">
+                                    ${app.reason}
+                                </td>
+                                <td><span class="badge ${badgeClass}">${app.status}</span></td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                    <button class="btn btn-sm btn-secondary" title="View & Print Slip" onclick='showAppointmentSlip(${JSON.stringify(app)})'>🖨️</button>
+                                    ${app.status === "Confirmed" ? `
+                                        <button class="btn btn-sm btn-success" title="Mark Completed" onclick="updateStatus(${app.id}, 'Completed')">✅</button>
+                                        <button class="btn btn-sm btn-danger" title="Cancel Appointment" onclick="updateStatus(${app.id}, 'Cancelled')">❌</button>
+                                    ` : ''}
+                                    <button class="btn btn-sm btn-danger" style="background:#555;" title="Delete Record" onclick="deleteAppointment(${app.id}, '${app.reference_id}')">🗑️</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    tbody.innerHTML = rows;
+                })
+                .catch(err => {
+                    console.error("Table load error:", err);
+                    tbody.innerHTML = `<tr><td colspan="8" style="color:red; text-align:center;">Error connecting to server</td></tr>`;
+                });
+        }
+
+        function updateStatus(id, newStatus) {
+            let reason = "";
+            if (newStatus === "Cancelled") {
+                reason = prompt("Enter cancellation reason:", "Cancelled by hospital administrator");
+                if (reason === null) return;
+            }
+
+            fetch(`/api/appointments/${id}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus, reason: reason })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    loadStats();
+                    loadAppointments();
+                } else {
+                    alert(data.message || "Failed to update status");
+                }
+            })
+            .catch(err => {
+                console.error("Update error:", err);
+                alert("Error updating appointment");
+            });
+        }
+
+        function deleteAppointment(id, refId) {
+            if (!confirm(`Are you sure you want to permanently delete appointment ${refId}?`)) return;
+
+            fetch(`/api/admin/appointments/${id}`, { method: "DELETE" })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        loadStats();
+                        loadAppointments();
+                    } else {
+                        alert(data.message || "Failed to delete record");
+                    }
+                })
+                .catch(err => {
+                    console.error("Delete error:", err);
+                    alert("Error deleting record");
+                });
+        }
+    </script>
+</body>
+</html>

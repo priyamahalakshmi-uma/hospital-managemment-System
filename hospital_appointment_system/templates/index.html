@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Care Hospital - Appointment Booking System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">🏥 City Care Hospital</a>
+            <ul class="nav-links">
+                <li><a href="/" class="active">Book Appointment</a></li>
+                <li><a href="/lookup">Check Booking Status</a></li>
+                <li><a href="/admin">Admin Portal</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="hero-header">
+        <h1>🏥 City Care Hospital</h1>
+        <p>Advanced Outpatient Consultation & Real-Time Appointment Scheduling System</p>
+        <div class="hero-highlights">
+            <span class="highlight-pill">🩺 8 Specialist Wings</span>
+            <span class="highlight-pill">⭐ 4.9/5 Patient Satisfaction</span>
+            <span class="highlight-pill">⚡ Instant Digital OPD Slip</span>
+            <span class="highlight-pill">🕒 Mon – Sat 9:00 AM - 7:00 PM</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Hospital Details -->
+        <section class="card-section">
+            <h2>👨‍⚕️ Meet Our Specialist Doctors</h2>
+            <p style="color: #555; margin-bottom: 15px;">City Care Hospital features experienced specialists across 8 major medical departments. Select any doctor below to reserve your consultation slot.</p>
+
+            <div class="doctor-container">
+                {% for doc in doctors %}
+                <div class="doctor-card">
+                    <div>
+                        <div class="doctor-header">
+                            <div class="doctor-avatar-badge">
+                                {% if 'Cardio' in doc.specialization %}🫀
+                                {% elif 'Derm' in doc.specialization %}🧴
+                                {% elif 'Pediat' in doc.specialization %}👶
+                                {% elif 'Ortho' in doc.specialization %}🦴
+                                {% elif 'Gynec' in doc.specialization %}🌸
+                                {% elif 'Neuro' in doc.specialization %}🧠
+                                {% elif 'Ophthal' in doc.specialization %}👁️
+                                {% else %}🩺
+                                {% endif %}
+                            </div>
+                            <div class="doctor-title-box">
+                                <h3>{{ doc.name }}</h3>
+                                <span class="doctor-spec-tag">{{ doc.specialization }}</span>
+                            </div>
+                        </div>
+
+                        <div class="doctor-meta">
+                            <div><strong>Experience:</strong> {{ doc.experience_years }}+ Years Clinical Practice</div>
+                            <div><strong>Shift:</strong> {{ doc.morning_hours }} &bull; {{ doc.evening_hours }}</div>
+                            <div style="color: #e76f51;">⭐ 4.9 &bull; Highly Recommended</div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-doctor-select" onclick="selectDoctorAndScroll('{{ doc.name }}')">
+                        📅 Book with {{ doc.name.split()[1] if doc.name.split()|length > 1 else doc.name }} &rarr;
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Timings Section -->
+        <section class="card-section">
+            <h2>🕒 Doctor Consultation Timings</h2>
+            <div class="table-responsive">
+                <table class="timings-table">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Morning Shift</th>
+                            <th>Evening Shift</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Monday</td><td>9:00 AM - 1:00 PM</td><td>4:00 PM - 7:00 PM</td></tr>
+                        <tr><td>Tuesday</td><td>9:00 AM - 1:00 PM</td><td>4:00 PM - 7:00 PM</td></tr>
+                        <tr><td>Wednesday</td><td>9:00 AM - 1:00 PM</td><td>4:00 PM - 7:00 PM</td></tr>
+                        <tr><td>Thursday</td><td>9:00 AM - 1:00 PM</td><td>4:00 PM - 7:00 PM</td></tr>
+                        <tr><td>Friday</td><td>9:00 AM - 1:00 PM</td><td>4:00 PM - 7:00 PM</td></tr>
+                        <tr><td>Saturday</td><td>9:00 AM - 1:00 PM</td><td>4:00 PM - 6:00 PM</td></tr>
+                        <tr style="background: #fdf2f2;"><td style="color: #e63946; font-weight: bold;">Sunday</td><td colspan="2" style="color: #e63946; font-weight: bold;">Closed for Routine Appointments</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Appointment Form -->
+        <section class="card-section">
+            <h2>📅 Book an Appointment</h2>
+            <p style="margin-bottom: 20px; color: #555;">Please fill out the form below. Real-time availability will automatically load based on your chosen doctor and date.</p>
+
+            <form id="appointmentForm" novalidate>
+                <div class="form-grid">
+
+                    <!-- Patient Name -->
+                    <div class="form-group">
+                        <label for="name">Patient Name *</label>
+                        <input type="text" id="name" placeholder="Enter patient full name">
+                        <div id="nameError" class="error-text"></div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="form-group">
+                        <label for="email">Email Address *</label>
+                        <input type="email" id="email" placeholder="patient@example.com">
+                        <div id="emailError" class="error-text"></div>
+                    </div>
+
+                    <!-- Phone Number -->
+                    <div class="form-group">
+                        <label for="phone">Phone Number (10 digits) *</label>
+                        <input type="tel" id="phone" placeholder="e.g. 9876543210" maxlength="10">
+                        <div id="phoneError" class="error-text"></div>
+                    </div>
+
+                    <!-- Select Doctor -->
+                    <div class="form-group">
+                        <label for="doctor">Select Doctor *</label>
+                        <select id="doctor">
+                            <option value="">-- Choose a Doctor --</option>
+                            {% for doc in doctors %}
+                            <option value="{{ doc.name }}">{{ doc.name }} - {{ doc.specialization }}</option>
+                            {% endfor %}
+                        </select>
+                        <div id="doctorError" class="error-text"></div>
+                    </div>
+
+                    <!-- Appointment Date -->
+                    <div class="form-group">
+                        <label for="date">Appointment Date *</label>
+                        <input type="date" id="date">
+                        <div id="dateError" class="error-text"></div>
+                    </div>
+
+                    <!-- Real-Time Slot Picker -->
+                    <div class="form-group full-width">
+                        <label>Select Time Slot (Real-time Availability) *</label>
+                        <input type="hidden" id="selectedTime" value="">
+                        
+                        <div class="slots-container">
+                            <div id="slotsMessage" style="font-size: 14px; color: #555;">
+                                Please select a doctor and date first to load available time slots.
+                            </div>
+                            <div id="slotsGrid" class="slots-grid"></div>
+                        </div>
+                        <div id="timeError" class="error-text"></div>
+                    </div>
+
+                    <!-- Reason -->
+                    <div class="form-group full-width">
+                        <label for="reason">Reason for Consultation *</label>
+                        <textarea id="reason" placeholder="Describe symptoms or purpose of your visit"></textarea>
+                        <div id="reasonError" class="error-text"></div>
+                    </div>
+
+                </div>
+
+                <button type="submit" id="submitBtn" class="btn btn-block">
+                    🏥 Confirm & Book Appointment
+                </button>
+            </form>
+        </section>
+
+    </div>
+
+    <!-- Appointment Slip Modal (Print-Ready) -->
+    <div id="slipModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>✅ Appointment Confirmed!</h3>
+                <button type="button" id="modalCloseBtn" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="appointment-slip">
+                    <div class="slip-header">
+                        <h2>🏥 City Care Hospital</h2>
+                        <p>25, Main Road, Tiruppur, Tamil Nadu | Ph: 9876543210</p>
+                        <p><strong>Official Outpatient Appointment Slip</strong></p>
+                    </div>
+
+                    <div class="slip-ref-box">
+                        <span>Booking Reference Number</span>
+                        <strong id="slipRefId">CCH-XXXXXXXX-XXXX</strong>
+                    </div>
+
+                    <table class="slip-table">
+                        <tr>
+                            <td class="label">Patient Name:</td>
+                            <td id="slipPatientName">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Contact Phone:</td>
+                            <td id="slipPhone">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Email:</td>
+                            <td id="slipEmail">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Consulting Doctor:</td>
+                            <td id="slipDoctor">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Appointment Date:</td>
+                            <td id="slipDate">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Scheduled Time:</td>
+                            <td id="slipTime">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Purpose / Symptoms:</td>
+                            <td id="slipReason">-</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Current Status:</td>
+                            <td><span id="slipStatus" class="badge badge-confirmed">Confirmed</span></td>
+                        </tr>
+                    </table>
+
+                    <div class="slip-instructions">
+                        📌 <strong>Instructions for Patients:</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Please present this slip or quote your Reference ID at reception counter #1.</li>
+                            <li>Kindly arrive 15 minutes prior to your scheduled time slot.</li>
+                            <li>To cancel or reschedule, visit our "Check Booking Status" portal anytime.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="modalPrintBtn" class="btn btn-secondary">🖨️ Print / Save PDF</button>
+                <button type="button" id="modalDoneBtn" class="btn">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2026 City Care Hospital | Web Technologies Project | Tiruppur, Tamil Nadu</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

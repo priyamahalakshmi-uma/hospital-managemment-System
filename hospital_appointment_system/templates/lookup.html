@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Booking Status - City Care Hospital</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">🏥 City Care Hospital</a>
+            <ul class="nav-links">
+                <li><a href="/">Book Appointment</a></li>
+                <li><a href="/lookup" class="active">Check Booking Status</a></li>
+                <li><a href="/admin">Admin Portal</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="hero-header">
+        <h1>🔍 Patient Self-Service Portal</h1>
+        <p>Track your consultation status, print your official OPD slip, or cancel appointments</p>
+        <div class="hero-highlights">
+            <span class="highlight-pill">📱 Search by Mobile Number</span>
+            <span class="highlight-pill">📄 Re-Print OPD Slip Anytime</span>
+            <span class="highlight-pill">❌ Free Cancellation</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Search Form Card -->
+        <section class="card-section">
+            <h2>🔎 Find Your Appointment</h2>
+            <p style="margin-bottom: 20px; color: #555;">Enter your <strong>10-digit Phone Number</strong> or your <strong>Booking Reference ID</strong> (e.g. CCH-20261105-1001).</p>
+
+            <form id="searchForm" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <input 
+                    type="text" 
+                    id="searchQuery" 
+                    placeholder="Enter Phone Number or Reference ID" 
+                    style="flex: 1; min-width: 250px;" 
+                    required
+                >
+                <button type="submit" id="searchBtn" class="btn">
+                    🔍 Search Appointment
+                </button>
+            </form>
+        </section>
+
+        <!-- Results Container -->
+        <div id="resultsContainer"></div>
+
+    </div>
+
+    <!-- Appointment Slip Modal (Print-Ready) -->
+    <div id="slipModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📄 Official Appointment Slip</h3>
+                <button type="button" id="modalCloseBtn" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="appointment-slip">
+                    <div class="slip-header">
+                        <h2>🏥 City Care Hospital</h2>
+                        <p>25, Main Road, Tiruppur, Tamil Nadu | Ph: 9876543210</p>
+                        <p><strong>Official Outpatient Appointment Slip</strong></p>
+                    </div>
+
+                    <div class="slip-ref-box">
+                        <span>Booking Reference Number</span>
+                        <strong id="slipRefId">CCH-XXXXXXXX-XXXX</strong>
+                    </div>
+
+                    <table class="slip-table">
+                        <tr><td class="label">Patient Name:</td><td id="slipPatientName">-</td></tr>
+                        <tr><td class="label">Contact Phone:</td><td id="slipPhone">-</td></tr>
+                        <tr><td class="label">Email:</td><td id="slipEmail">-</td></tr>
+                        <tr><td class="label">Consulting Doctor:</td><td id="slipDoctor">-</td></tr>
+                        <tr><td class="label">Appointment Date:</td><td id="slipDate">-</td></tr>
+                        <tr><td class="label">Scheduled Time:</td><td id="slipTime">-</td></tr>
+                        <tr><td class="label">Purpose / Symptoms:</td><td id="slipReason">-</td></tr>
+                        <tr><td class="label">Current Status:</td><td><span id="slipStatus" class="badge badge-confirmed">Confirmed</span></td></tr>
+                    </table>
+
+                    <div class="slip-instructions">
+                        📌 <strong>Instructions for Patients:</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Please present this slip or quote your Reference ID at reception counter #1.</li>
+                            <li>Kindly arrive 15 minutes prior to your scheduled time slot.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="modalPrintBtn" class="btn btn-secondary">🖨️ Print / Save PDF</button>
+                <button type="button" id="modalDoneBtn" class="btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2026 City Care Hospital | Web Technologies Project | Tiruppur, Tamil Nadu</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        document.getElementById("searchForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const query = document.getElementById("searchQuery").value.trim();
+            if (!query) return;
+
+            const searchBtn = document.getElementById("searchBtn");
+            searchBtn.disabled = true;
+            searchBtn.textContent = "Searching...";
+
+            const resultsContainer = document.getElementById("resultsContainer");
+            resultsContainer.innerHTML = "<p style='text-align:center; padding: 20px; color:#666;'>Loading records...</p>";
+
+            fetch(`/api/appointments/search?query=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    searchBtn.disabled = false;
+                    searchBtn.textContent = "🔍 Search Appointment";
+
+                    if (!data.success || !data.appointments || data.appointments.length === 0) {
+                        resultsContainer.innerHTML = `
+                            <div class="card-section" style="text-align: center; padding: 40px;">
+                                <div style="font-size: 40px; margin-bottom: 10px;">🔍❌</div>
+                                <h3>No Appointments Found</h3>
+                                <p style="color: #666; margin-top: 8px;">No records found matching "<strong>${query}</strong>". Please verify your phone number or booking reference ID.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = `<h3 style="margin-bottom: 15px; color: #087f8c;">Found ${data.appointments.length} Appointment(s):</h3>`;
+                    
+                    data.appointments.forEach(app => {
+                        let badgeClass = "badge-confirmed";
+                        if (app.status === "Completed") badgeClass = "badge-completed";
+                        if (app.status === "Cancelled") badgeClass = "badge-cancelled";
+
+                        const isUpcoming = app.status === "Confirmed";
+
+                        html += `
+                            <div class="appointment-result-card">
+                                <div class="appointment-header">
+                                    <div>
+                                        <span class="appointment-ref">${app.reference_id}</span>
+                                        <span style="font-size: 13px; color: #888; margin-left: 10px;">Booked on ${app.created_at || 'Recent'}</span>
+                                    </div>
+                                    <span class="badge ${badgeClass}">${app.status}</span>
+                                </div>
+                                <div class="appointment-body-grid">
+                                    <div><strong>Patient:</strong> ${app.patient_name}</div>
+                                    <div><strong>Doctor:</strong> ${app.doctor_name}</div>
+                                    <div><strong>Date:</strong> 📅 ${app.appointment_date}</div>
+                                    <div><strong>Time:</strong> 🕒 ${app.appointment_time}</div>
+                                    <div><strong>Phone:</strong> ${app.phone}</div>
+                                    <div><strong>Email:</strong> ${app.email}</div>
+                                </div>
+                                <div style="margin-bottom: 15px;">
+                                    <strong>Reason for Visit:</strong> ${app.reason}
+                                    ${app.cancellation_reason ? `<div style="color: #e63946; font-size: 13px; margin-top: 4px;"><strong>Cancellation Note:</strong> ${app.cancellation_reason}</div>` : ''}
+                                </div>
+                                <div class="appointment-actions">
+                                    <button class="btn btn-sm btn-secondary" onclick='viewSlip(${JSON.stringify(app)})'>
+                                        🖨️ View & Print Slip
+                                    </button>
+                                    ${isUpcoming ? `
+                                        <button class="btn btn-sm btn-danger" onclick="cancelAppointment(${app.id}, '${app.reference_id}')">
+                                            ❌ Cancel Appointment
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    resultsContainer.innerHTML = html;
+                })
+                .catch(err => {
+                    console.error("Search error:", err);
+                    searchBtn.disabled = false;
+                    searchBtn.textContent = "🔍 Search Appointment";
+                    resultsContainer.innerHTML = `<p style="color: red; text-align: center;">Error connecting to server.</p>`;
+                });
+        });
+
+        function viewSlip(appointment) {
+            showAppointmentSlip(appointment);
+        }
+
+        function cancelAppointment(id, refId) {
+            const reason = prompt(`Are you sure you want to cancel booking ${refId}?\nPlease enter a reason:`, "Change of schedule");
+            if (reason === null) return; // User cancelled prompt
+
+            fetch(`/api/appointments/${id}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    status: "Cancelled",
+                    reason: reason || "Cancelled by patient"
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ Appointment successfully cancelled.");
+                    // Re-trigger search
+                    document.getElementById("searchForm").dispatchEvent(new Event("submit"));
+                } else {
+                    alert(data.message || "Failed to cancel appointment.");
+                }
+            })
+            .catch(err => {
+                console.error("Cancel error:", err);
+                alert("Error communicating with server.");
+            });
+        }
+    </script>
+</body>
+</html>
